@@ -136,53 +136,16 @@
 	  special-use top-level name [TBD1] as their “global name” until they are configured with a global name.</t>
 
 	<t>A homenet's global name can be a name that the homenet user has registered on their own in the DNS using a public DNS
-	  registrar.  However, this is not required and, indeed, presents some operational challenges.  It can also be a name under
-	  a domain owned by one of the user's service providers, or managed by some service provider that specifically provides
-	  homenet naming services.</t>
-	<t>
-	  For most end-users, the second or third options will be
-	  preferable.  It will allow them to choose an
-	  easily-remembered homenet domain name under an
-	  easily-remembered service provider subdomain, and will not
-	require them to maintain a DNS registration.</t>
-	<t>
-	  [This doesn't belong in the arch document, at least not in
-	  this part, but I'm writing it down because I think we
-	  should discuss it and figure out exactly what we should
-	  recommend, and I do believe we should recommend something
-	  here and not just hope for the best.  I am also hoping to
-	  stave off frivolous, privacy-harming patents by publishing
-	this now:]</t>
-	<t>
-	  Providers of either of these types of homenet naming
-	  service should offer a selection of different provider
-	  TLDs rather than a flat namespace, so as to avoid the
-	  exampleuser1997 problem.  So for example rather than
-	  having a single namespace "isp.example.com", the provider should have a series of subdomains, like 
-	"grapefruit.example.com", "warrior.example.com", "koala.example.com", "rocket.example.com", and so forth.</t>
-	<t>
-	  Some small number of such subdomains should be presented
-	  to the user when registering.  Subdomains with more than
-	  perhaps 50,000 homenets registered in them should never be
-	  presented for registration, to avoid chosen name
-	  collisions.  If the user is unable to find a namespace
-	  they like, it may be beneficial to allow the user to cycle
-	  through a larger set of namespaces.  The user should wind
-	up with a global name like "hamburger.warrior.example.com".</t>
-	<t>
-	  This specification may seem frivolous or
-	  overly-prescriptive.  The reason for being this specific
-	  is that it is important for the user to be able to quickly
-	  choose a memorable name that doesn't contain personal
-	  identifying information.  Getting this user interface
-	  right has significant implications for the user's privacy
-	  and security.  Any user interface that meets the criterion
-	  that the user can quickly choose a memorable name that
-	  doesn't contain personal information will address this
-	  requirement.  The user should be specifically told not to
-	  use personal information like birthdays or names of
-	  friends or pets, and should be encouraged to write the
-	chosen name down until they have it memorized.</t>
+	  registrar.  However, this is not required and, indeed, presents some operational challenges.  It can also be a subdomain
+	  of a domain owned by one of the user's ISP, or managed by some DNS service provider that specifically provides homenet
+	  naming services.</t>
+
+	<t>For most end-users, the second or third options will be preferable.  It will allow them to choose an easily-remembered
+	  homenet domain name under an easily-remembered service provider subdomain, and will not require them to maintain a DNS
+	  registration.</t>
+
+	<t>The process of establishing a global name for the homenet will have to be as automatic as possible, requiring
+	  no more intervention from the end user than that they choose a global, unique name for their network.
       </section>
       <section title="Local namespaces">
 	<t>
