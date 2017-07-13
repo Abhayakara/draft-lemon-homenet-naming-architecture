@@ -5,7 +5,7 @@
 <?rfc symrefs="no"?>
 
 <rfc obsoletes="" updates="" category="info" ipr="trust200902"
-     docName="draft-tldm-simple-homenet-naming-00">
+     docName="draft-tldm-simple-homenet-naming-01">
   <front>
     <title abbrev="Simple Homenet Naming/SD Arch">Simple Homenet Naming and Service Discovery Architecture</title>
 
@@ -39,7 +39,7 @@
       </address>
     </author>
 
-    <date year="2017" month="March" day="13"></date>
+    <date year="2017" month="July"></date>
     <abstract>
       <t>This document describes a simple name resolution and service discovery architecture for homenets.  This architecture covers
 	local publication of names, as well as name resolution for local and global names.
@@ -116,8 +116,8 @@
 	<t>Hybrid Multicast DNS <xref target="I-D.ietf-dnssd-hybrid"/> proposes a mechanism for extending multicast DNS beyond a
 	  single multicast domain..  However, it has serious shortcomings as a solution to the Homenet naming problem.  The most
 	  obvious shortcoming is that it requires that every multicast domain have a separate name.  This then requires that the
-	  homenet generate names for every multicast domain, and requires that the end user have a mental model of the topology of
-	  the network in order to guess on which link a given service may appear.  [xxx is this really true at the UI?]</t>
+	  homenet generate names for every multicast domain, and in degenerate cases requires that the end user have a mental model
+	  of the topology of the network in order to guess on which link a given service may appear.</t>
       </section>
     </section>
 
@@ -151,54 +151,51 @@
 	  implementations of DNSSD will do unicast queries using the DNS protocol.</t>
 
 	<t>Service discovery is configured using the technique described in Section 11 of DNS-Based Service Discovery
-	  <xref target="RFC6763"/>.  HNRs will answer domain enumeration ueries against every IPv4 address prefix advertised on a
+	  <xref target="RFC6763"/>.  HNRs will answer domain enumeration queries against every IPv4 address prefix advertised on a
 	  homenet link, and every IPv6 address prefix advertised on a homenet link, including prefixes derived from the homenet's
 	  ULA(s).  Whenever the "&lt;domain&gt;" sequence appears in this section, it references each of the domains mentioned in
 	  this paragraph.</t>
 
 	<t>Homenets advertise the availability of several browsing zones in the "b._dns_sd.&lt;domain&gt;" subdomain.  By default,
-	  the TBD1 domain is advertised.  Similarly, TBD1 is advertised as the default browsing and service registration domain
+	  the 'home.arpa' domain is advertised.  Similarly, 'home.arpa' is advertised as the default browsing and service registration domain
 	  under "db._dns_sd.&lt;domain&gt;", "r._dns_sd.&lt;domain&gt;", "dr._dns_sd.&lt;domain&gt;" and
 	  "lb._dns_sd.&lt;domain&gt;".</t>
       </section>
 	
       <section title="Resolution of local names">
-	<t>Local names appear as subdomains of [TBD1].   These names can only be resolved within the homenet; not only is
-	  [TBD1] not a globally unique name, but queries from outside of the homenet for any name, on or off the homenet, must
+	<t>Local names appear as subdomains of ['home.arpa'].   These names can only be resolved within the homenet; not only is
+	  ['home.arpa'] not a globally unique name, but queries from outside of the homenet for any name, on or off the homenet, must
 	  be rejected with a REFUSED response.</t>
 
 	<t>In addition, names can appear as subdomains of the locally-served 'in-addr.arpa' or 'ip6.addr' zone that corresponding to
-	  the ULA that is in use on the homenet.   IP addresses and names advertised locally MUST use the homenet's ULA.</t>
+	  the RFC1918 IPv4 prefix and the IPv6 ULA that is in use on the homenet.  IP addresses and names advertised locally MUST
+	  use addresses in the homenet's ULA prefix and/or RFC1918 prefix.</t>
 
 	<t>It is possible that local services may number themselves using more than one of the prefixes advertised locally.  Homenet
 	  hybrid proxies MUST filter out global IP addresses, providing only ULA addresses, similar to the process described in
 	  section 5.5.2 of <xref target="I-D.ietf-dnssd-hybrid"/>. [xxx is this going to be a problem?]</t>
 
-	<t>The Hybrid Proxy model relies on each link having its own name.   However, homenets do not actually have a way to name
-	  local links that will make any sense to the end user.   Consequently, this mechanism will not work.   In order to paper
-	  over this, some changes are required:
-	  <list style="symbols">
-	    <t>The Hybrid Proxy function is divided into two: relaying proxies, and aggregating proxies.   There must be
-	      exactly one querying proxy per link; there can be as few as one aggregating proxy per homenet.</t>
-	    <t>Relaying proxies do no translation, for example from ".local" to "bldg1.example.com" as shown in section 5.3
-	      of <xref target="I-D.ietf-dnssd-hybrid"/>.   They simply take queries over the DNS protocol for names in
-	      subdomains of '.local', the link-specific 'ip6.addr', and the link-specific 'in-addr.arpa' zones, and
-	      respond with the exact answers received.</t>
-	    <t>There must be exactly one querying proxy per internal link on the homenet; for links that are connected to more than
-	      one homenet router, HNCP is used to choose which router will provide the service.</t>
-	    <t>Querying proxies perform translation.   Machine readable names are presented as subdomains of the TBD1 domain.
-	      Human readable names are presented as subdomains of the _hr.TBD1 domain.</t>
-	    <t>Every homenet router can provide a querying proxy, or only one router can.  This is determined by HNCP; all homenet
-	      routers must provide this capability, but some homenet routers may provide enhanced querying proxy capabilities such
-	      that homenet routers providing only those capabilities described in this document must be disabled.  Therefore, all
-	      homenet routers must be able to act as a querying proxy, or forward DNS queries to a central querying proxy, according
-	      to what is specified through HNCP.</t>
-	  </list>
+	<t>The Hybrid Proxy model relies on each link having its own name.  However, homenets do not actually have a way to name
+	  local links that will make any sense to the end user.  Consequently, this mechanism will not work without some tweaks.  In
+	  order to address this, homenets will use Discovery Brokers <xref target="I-D.sctl-discovery-broker"/>.  The discovery
+	  broker will be configured so that a single query for a particular service will be successful in providing the information
+	  required to access that service, regardless of the link it is on.</t>
+
+	<t>Artificial link names will be generated using HNCP.  These should only be visible to the user in graphical user interfaces
+	  in the event that the same name is claimed by a service on two links.   Services that are expected to be accessed by users
+	  who type in names should use <xref target="I-D.sctl-service-registration"/> if it is available.</t>
+
+	<t>Homenets are not required to support Service Registration.   Service registration requires a stateful DNS server; this
+	  may be beyond the capability of the minimal homenet router.   However, more capable homenet routers should provide this
+	  capability.   In order to make this work, minimal homenet routers MUST implement the split hybrid proxy described in
+	  <xref target="I-D.sctl-mdns-relay"/>.   This enables a homenet with one or more homenet routers that provide a stateful
+	  registration cache to allow those routers to take over service, using Discovery Relays to service links that are
+	  connected using homenet routers with more limited functionality.
 	</t>
       </section>
 
       <section title="DNSSEC Validation">
-	<t>DNSSEC Validation for the TBD1 zone and for the locally-served 'ip6.arpa and 'in-adr.arpa' domains is not possible
+	<t>DNSSEC Validation for the 'home.arpa' zone and for the locally-served 'ip6.arpa and 'in-adr.arpa' domains is not possible
 	  without a trust anchor.  Establishment of a trust anchor for such validation is out of scope for this document.</t>
       </section>
 
@@ -223,7 +220,7 @@
 	    B1, B2).</t>
 
 	  <t>Every resolver provided by the homenet, regardless of which provisioning domain it is intended to serve, will accept
-	    updates for subdomains of the TBD1 and locally-served 'ip6.arpa' and 'in-addr.arpa' domains from hosts on the local
+	    updates for subdomains of the 'home.arpa' and locally-served 'ip6.arpa' and 'in-addr.arpa' domains from hosts on the local
 	    link.</t>
       </section>
 
@@ -247,7 +244,7 @@
       <t>The privacy of host information on the local net is left to hosts.  Various mechanisms are available to hosts to ensure
 	that tracking does not occur if it is not desired.  However, devices that need to have special permission to manage the
 	homenet will inevitably reveal something about themselves when doing so.  It may be possible to use something like HTTP
-	token binding<xref target="I-D.ietf-tokbind-https"/> to mitigate this risk.</t>
+	token binding <xref target="I-D.ietf-tokbind-https"/> to mitigate this risk.</t>
     </section>
 
     <section title="Security Considerations">
@@ -259,10 +256,9 @@
     </section>
 
     <section title="IANA considerations" anchor="IANA">
-      <t>This document is relying on the allocation of [TBD1] described in Special Use Top Level Domain
-	'.homenet' <xref target="I-D.ietf-homenet-dot"/>.   As such, no new actions are required by IANA, but this document
-	can't proceed until that allocation is done.   At that time, the name [TBD1] can be substituted for the name that
-	is eventually allocated during the processing of that document.</t>
+      <t>This document is relying on the allocation of 'home.arpa' described in Special Use Top Level Domain
+	'.home.arpa' <xref target="I-D.ietf-homenet-dot"/>.   As such, no new actions are required by IANA, but this document
+	can't proceed until that allocation is done.</t>
     </section>
   </middle>
   
@@ -278,6 +274,36 @@
       <?rfc include="reference.I-D.ietf-mif-mpvd-ndp-support" ?>
       <?rfc include="reference.I-D.ietf-tokbind-https" ?>
       <?rfc include="reference.I-D.ietf-homenet-dot" ?>
+      <reference anchor="I-D.sctl-discovery-broker">
+	<front>
+	  <title>Service Discovery Broker</title>
+	  <author initials="S" surname="Cheshire" fullname="Stuart Cheshire"/>
+	  <author initials="T" surname="Lemon" fullname="Ted Lemon"/>
+	  <date year='2017' month='July' day='2'/>
+	</front>
+	<seriesInfo name="Internet-Draft" value="draft-sctl-discovery-broker-00"/>
+	<format type="TXT" target="http://www.ietf.org/internet-drafts/draft-sctl-discovery-broker-00.txt"/>
+      </reference>
+      <reference anchor="I-D.sctl-service-registration">
+	<front>
+	  <title>Service Registration Protocol for DNS-Based Service Discovery</title>
+	  <author initials="S" surname="Cheshire" fullname="Stuart Cheshire"/>
+	  <author initials="T" surname="Lemon" fullname="Ted Lemon"/>
+	  <date year='2017' month='July' day='2'/>
+	</front>
+	<seriesInfo name="Internet-Draft" value="draft-sctl-service-registration-00"/>
+	<format type="TXT" target="http://www.ietf.org/internet-drafts/draft-sctl-service-registration-00.txt"/>
+      </reference>
+      <reference anchor="I-D.sctl-mdns-relay">
+	<front>
+	  <title>Multicast DNS Discovery Relay</title>
+	  <author initials="S" surname="Cheshire" fullname="Stuart Cheshire"/>
+	  <author initials="T" surname="Lemon" fullname="Ted Lemon"/>
+	  <date year='2017' month='July' day='2'/>
+	</front>
+	<seriesInfo name="Internet-Draft" value="draft-sctl-mdns-relay-00"/>
+	<format type="TXT" target="http://www.ietf.org/internet-drafts/draft-sctl-mdns-relay-00.txt"/>
+      </reference>
     </references>
   </back>
 </rfc>
