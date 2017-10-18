@@ -41,28 +41,55 @@
 
     <date year="2017" month="July"></date>
     <abstract>
-      <t>This document describes a simple name resolution and service discovery architecture for homenets.  This architecture covers
-	local publication of names, as well as name resolution for local and global names.
+      <t>This document describes a simple name resolution and service discovery architecture for homenets, using the 'home.arpa'
+	domain name hierarchy.  This architecture covers local publication of names, as well as name resolution service for local
+	and global names for devices connected to the homenet.
+      </t>
+      <t>
+	This document does not cover discovery of homenet services by devices not connected to the homenet, nor DNSSEC, nor
+	acquisition and configuration of a global name as an alternative to 'home.arpa'.  These topics will be addressed in
+	a separate document.
       </t>
     </abstract>
   </front>
 
   <middle>
     <section title="Introduction">
+     <t>
+	This document describes a simple architecture for providing name service and service discovery for homenets. This allows
+	hosts connected to the homenet to use the Domain Name System to discover services and the hosts providing those services,
+	whether they are on the home network or the Internet.  In addition, the architecture provides a way for hosts connected to
+	the homenet that provide services to advertise those services for discovery by other homenet hosts.</t>
+
       <t>
-	Associating domain names with hosts on the Internet is a key factor in enabling communication with hosts, particularly for
-	service discovery.   This document describes a simple way of providing name service and service discovery for homenets.
-	In principle, it may make sense to be able to publish names of devices on the homenet, so that services on the homenet
-	can be accessed outside of the homenet.   Such publication is out of scope for this document.   It may be desirable
-	to secure the homenet zone using DNSSEC.   This is likewise out of scope for this document.
+	This simple architecture is intended to serve as a foundational architecture for naming on home networks. It is expected
+	that all homenet routers will implement this architecture. It satisfies a subset of the requirements listed in IPv6 Home
+	Networking Architecture Principles <xref target="RFC7368"/>, and provides a foundation for completely addressing those
+	requirements.
       </t>
+
       <t>
-	In order to provide name service, several provisioning mechanisms must be available:
+	This simple architecture leaves the following requirements from RFC7368 Secton 3.7 unaddressed:
+	<list style="symbols">
+	  <t>Acquisition and configuration of a global name for the homenet, to be used in place of 'home.arpa.'</t>
+	  <t>Delegation of public reverse trees for prefixes delegated to the homenet: subdomains of 'ip6.arpa' and 'in-addr.arpa'.</t>
+	  <t>Publication of names on the homenet for general public use on the internet.</t>
+	  <t>Publication of names on the homenet for use by authorized users of the homenet when connected to other networks.</t>
+	  <t>Secure delegation, enabling DNSSEC validation of names published on the homenet.</t></list></t>
+
+      <t>
+	A later document will describe additional functionality that can be implemented on more capable home network
+	routers, so that a home network that has at least one such router, and one or more routers that only implement the
+	architecture described in this document, can work together to provide the full feature set described in RFC 7368.
+      </t>
+
+      <t>
+	In order to provide name service on a local network, several provisioning mechanisms must be available:
 	
 	<list style="symbols">
 	  <t>Provisioning of a domain name under which names can be published and services advertised</t>
 
-	  <t>Associating names that are subdomains of that name with hosts.</t>
+	  <t>Publishing subdomains of that name that identify hosts.</t>
 
 	  <t>Advertising services available on the local network by publishing resource records on those names.</t>
 
@@ -74,13 +101,8 @@
 	</list>
       </t>
 
-      <t>Homenet adds the following considerations:
+      <t>A simple homenet naming architecture adds the following considerations:
       <list style="numbers">
-	<t>Some names may be published in a broader scope than others.  For example, it may be desirable to advertise some homenet
-	  services to users who are not connected to the homenet.  However, it is unlikely that all services published on the home
-	  network would be appropriate to publish outside of the home network.  In many cases, no services will be appropriate to
-	  publish outside of the network, but the ability to do so is required.</t>
-
 	<t>Users cannot be assumed to be skilled or knowledgeable in name service operation, or even to have any sort of mental
 	  model of how these functions work.  All of the operations mentioned here must reliably function automatically, without any
 	  user intervention or debugging.</t>
@@ -94,30 +116,43 @@
 	<t>Devices that provide services must be able to publish those services on the homenet, and those services must be
 	  available from any part of the homenet, not just the link to which the device is attached.</t>
 
-	<t>Homenet explicitly supports multihoming—connecting to more than one Internet Service Provider—and therefore support for
-	  multiple provisioning domains <xref target="RFC7556"/> is required to deal with situations where the DNS may give a
+	<t>Homenet explicitly supports multihoming: connecting to more than one Internet Service Provider.  It therefore must
+	  address the problem of multiple provisioning domains <xref target="RFC7556"/>, in the sense that the DNS may give a
 	  different answer depending on whether caching resolvers at one ISP or another are queried.</t>
       </list>
       </t>
       
       <section title="Existing solutions">
 	<t>Previous attempts to automate naming and service discovery in the context of a home network are able to function with
-	  varying degrees of success depending on the topology of the home network.  For example, Multicast DNS
-	  <xref target="RFC6762"/> can provide naming and service discovery <xref target="RFC6763"/>, but only within a single
-	  multicast domain.</t>
+	  varying degrees of success depending on the topology of the home network.  Unfortunately, these solutions do not fully
+	  address the requirements of homenets.</t>
+	<t>For example, Multicast DNS <xref target="RFC6762"/> can provide naming and service discovery <xref target="RFC6763"/>,
+	  but only within a single multicast domain.</t>
 
 	<t>The Domain Name System provides a hierarchical namespace <xref target="RFC1034"/>, a mechanism for querying name servers
 	  to resolve names <xref target="RFC1035"/>, a mechanism for updating namespaces by adding and removing names
 	  <xref target="RFC2136"/>, and a mechanism for discovering services <xref target="RFC6763"/>.  Unfortunately, DNS provides
-	  no mechanism for automatically provisioning new namespaces, and secure updates to namespaces require pre-shared keys,
-	  which won't work for an unmanaged network.  DHCP can be used to populate names in a DNS namespace; however at present DHCP
-	  cannot provision service discovery information.</t>
-	
+	  no mechanism for automatically provisioning new namespaces, and secure updates to namespaces require that the host submitting
+	  the update have a public or symmetric key that is known to the network and authorized for updates.   In an unmanaged
+	  network, the publication of and authorization of these keys is an unsolved problem.
+	</t>
+	<t>Some managed networks get around this problem by having the DHCP server do DNS updates.  However, this doesn't really
+	  work, because DHCP doesn't provide a mechanism for updating service discovery records: it only supports publishing A and
+	  AAAA records.
+	</t>
+	<t>This partially solves the trust problem: DHCP can validate that a device is at least connected to a network link that is
+	  actually part of the managed network.  This prevents an off-network attacker from registering a name, but provides no
+	  mechanism for actually validating the identity of the host registering the name.  For example, it would be easy for an
+	  attacker on the network to steal a registered name.
+	</t>
 	<t>Hybrid Multicast DNS <xref target="I-D.ietf-dnssd-hybrid"/> proposes a mechanism for extending multicast DNS beyond a
-	  single multicast domain..  However, it has serious shortcomings as a solution to the Homenet naming problem.  The most
-	  obvious shortcoming is that it requires that every multicast domain have a separate name.  This then requires that the
-	  homenet generate names for every multicast domain, and in degenerate cases requires that the end user have a mental model
-	  of the topology of the network in order to guess on which link a given service may appear.</t>
+	  single multicast domain.  However, in order to use this as a solution, some shortcomings need to be addressed.  Most
+	  obviously, it requires that every multicast domain have a separate name.  This then requires that the homenet generate
+	  names for every multicast domain.  These names would then be revealed to the end user.  But since they would be generated
+	  automatically and arbitrarily, they would likely cause confusion rather than clarity, and in degenerate cases requires
+	  that the end user have a mental model of the topology of the network in order to guess on which link a given service may
+	  appear.</t>
+	<t>Note: We've actually worked a bit on this, and maybe this bullet item should go away or be revised.</t>
       </section>
     </section>
 
@@ -126,7 +161,6 @@
 	<list style="hanging">
 	  <t hangText="HNR">Homenet Router</t>
 	  <t hangText="ISP">Internet Service Provider</t>
-	  <t hangText="GNRP">Global Name Registration Provider</t>
       </list></t>
     </section>
 
@@ -144,6 +178,8 @@
       </section>
 
       <section title="Configuring Service Discovery">
+	<!-- XXX we could do queries for lb._dnssd._udp.local using mDNS, but we prefer unicast because it's less of a resource hog -->
+	
 	<t>DNS-SD uses several default domains for advertising local zones that are available for service discovery.  These include
 	  the '.local' domain, which is searched using mDNS, and also the IPv4 and IPv6 reverse zone corresponding to the prefixes
 	  in use on the local network.  For the homenet, no support for queries against the ".local" zone is provided by HNRs: a
@@ -160,20 +196,49 @@
 	  the 'home.arpa' domain is advertised.  Similarly, 'home.arpa' is advertised as the default browsing and service registration domain
 	  under "db._dns_sd.&lt;domain&gt;", "r._dns_sd.&lt;domain&gt;", "dr._dns_sd.&lt;domain&gt;" and
 	  "lb._dns_sd.&lt;domain&gt;".</t>
+
+	<t>In order for this discovery process to work, the homenet must provide authoritative name service for the 'ip6.arpa' and
+	  'in-addr.arpa' subdomains corresponding to each of the prefixes advertised on the homenet.   For example, consider a homenet
+	  with the 192.168.1.0/24, 2001:db8:1234:5600::/56 and fc01:2345:6789:1000::/56 prefixes.   This homenet will have to provide
+	  a name server that claims to be authoritative for 1.168.192.in-addr.arpa, 6.5.4.3.2.1.8.b.d.0.1.0.0.2.ip6.arpa and
+	  0.0.9.8.7.6.5.4.3.2.1.0.c.f.ip6.arpa.
+	</t>
+	<t>An IPv6-only homenet would not have a server for a subdomain of in-addr.arpa.  These public authoritative zones are
+	  required for the public prefixes even if the prefixes are not delegated.  However, they need not be accessible outside of
+	  the homenet.</t>
+	<t>It is out of the scope of this document to specify ISP behavior, but we note that ISPs have the option of securely
+	  delegating the zone, or providing an unsigned delegation, or providing no delegation.  Any delegation tree that does not
+	  include an unsigned delegation at or above the zone cut for the ip6.arpa reverse zone for the assigned prefix will fail to
+	  validate.</t>
+	<t>Ideally, an ISP should provide a secure delegation using a zone-signing key provided by the homenet.   However, that too
+	  is out of scope for this document.   Therefore, an ISP that wishes to support users of the simple homenet naming architecture
+	  will have to provide an unsigned delegation.   We do not wish, however, to discourage provisioning of signed delegations
+	  when that is possible.</t>
       </section>
 	
       <section title="Resolution of local names">
-	<t>Local names appear as subdomains of ['home.arpa'].   These names can only be resolved within the homenet; not only is
-	  ['home.arpa'] not a globally unique name, but queries from outside of the homenet for any name, on or off the homenet, must
-	  be rejected with a REFUSED response.</t>
+	<t>Local names appear as subdomains of 'home.arpa'.  These names can only be resolved within the homenet; not only is
+	  'home.arpa' not a globally unique name, but queries from outside of the homenet for any name, on or off the homenet, must
+	  be rejected with a REFUSED response.  The intended use case for local names is that hosts will attempt to discover or
+	  contact other hosts on the homenet that are offering services.</t>
 
-	<t>In addition, names can appear as subdomains of the locally-served 'in-addr.arpa' or 'ip6.addr' zone that corresponding to
-	  the RFC1918 IPv4 prefix and the IPv6 ULA that is in use on the homenet.  IP addresses and names advertised locally MUST
-	  use addresses in the homenet's ULA prefix and/or RFC1918 prefix.</t>
+	<t>In addition, names of devices on the homenet can appear in the resource records of names that are subdomains of the
+	  locally-served 'in-addr.arpa' or 'ip6.arpa zone that corresponding to the RFC1918 IPv4 prefix and the IPv6 ULA that is in
+	  use on the homenet.  Names ending in 'home.arpa' should never appear in RRDATA for names that are subdomains of reverse
+	  mappings for global IP addresses.  This should not cause operational problems, since connections between devices on the
+	  homenet can be expected to use addresses in the homenet's ULA prefix.</t>
 
-	<t>It is possible that local services may number themselves using more than one of the prefixes advertised locally.  Homenet
-	  hybrid proxies MUST filter out global IP addresses, providing only ULA addresses, similar to the process described in
-	  section 5.5.2 of <xref target="I-D.ietf-dnssd-hybrid"/>. [xxx is this going to be a problem?]</t>
+	<t>IP addresses and names advertised locally MUST use addresses in the homenet's ULA prefix and/or RFC1918 prefix.  The
+	  reason for this is that the homenet ULA can be assumed to be stable, but prefixes assigned by ISPs cannot.  The stability
+	  of ISP-provided addresses is a matter of ISP policy, and can't be controlled by the homenet.</t>
+
+	<t>It is possible that local services may offer services available on IP addresses in public as well as ULA prefixes.
+	  Homenet hybrid proxies MUST filter out global IP addresses, providing only ULA addresses, similar to the process described
+	  in section 5.5.2 of <xref target="I-D.ietf-dnssd-hybrid"/>.</t>
+
+	<t>This filtering applies to queries within the homenet; it is
+	  appropriate for non-ULA addresses to be used for offering services, because in some cases end users may want such services
+	  to be reachable outside of the homenet.  Configuring this is however out of scope for this document.</t>
 
 	<t>The Hybrid Proxy model relies on each link having its own name.  However, homenets do not actually have a way to name
 	  local links that will make any sense to the end user.  Consequently, this mechanism will not work without some tweaks.  In
@@ -200,28 +265,27 @@
       </section>
 
       <section title="Support for Multiple Provisioning Domains">
-	  <t>Homenets must support the Multiple Provisioning Domain Architecture <xref target="RFC7556"/>.  In order to support this
-	    architecture, each homenet router that provides name resolution must provide one resolver for each provisioning domain
-	    (PvD).  Each homenet router will advertise one resolver IP address for each PvD.  DNS requests to the resolver associated
-	    with a particular PvD, e.g. using RA options <xref target="I-D.ietf-mif-mpvd-ndp-support"/> will be resolved using the
-	    external resolver(s) provisioned by the service provider responsible for that PvD.</t>
+	<t>Homenets must support the Multiple Provisioning Domain Architecture <xref target="RFC7556"/>.  Hosts connected to the
+	  homenet may or may not support multiple provisioning domains.  For hosts that do not support multiple provisioning
+	  domains, the homenet provides one or more resolvers that will answer queries for any provisioning domain.  Such hosts may
+	  receive answers to queries that either do not work as well if the host chooses a source address from a different
+	  provisioning domain, or does not work at all.  However, the default source address selection policy, longest-match [CITE],
+	  will result in the correct source address being chosen as long as the destination address has a close match to the prefix
+	  assigned by the ISP.
+	</t>
 
-	  <t>The homenet is a separate provisioning domain from any of the service providers.  The global name of the homenet can be
-	    used as a provisioning domain identifier, if one is configured.  Homenets should allow the name of the local provisioning
-	    domain to be configured; otherwise by default it should be “Home Network xxx”, where xxx is the generated portion of the
-	    homenet's ULA prefix, represented as a base64 string.</t>
+	<t>Hosts that support multiple provisioning domains will be provisioned with one or more resolvers per provisioning domain.
+	  Such hosts can use the IP address of the resolver to determine which provisioning domain is applicable for a particular
+	  answer.</t>
 
-	  <t>The resolver for the homenet PvD is offered as the primary resolver in RAs and through DHCPv4 and DHCPv6.  When queries
-	    are made to the homenet-PvD-specific resolver for names that are not local to the homenet, the resolver will use a
-	    round-robin technique, alternating between service providers with each step in the round-robin process, and then also
-	    between external resolvers at a particular service provider if a service provider provides more than one.  The
-	    round-robining should be done in such a way that no service provider is preferred, so if service provider A provides one
-	    caching resolver (A), and service provider B provides two (B1, B2), the round robin order will be (A, B1, A, B2), not (A,
-	    B1, B2).</t>
+	<t>Each ISP has its own provisioning domain.  Because ISPs connections cannot be assumed to be persistent, the homenet has
+	its own separate provisioning domain.</t>
 
-	  <t>Every resolver provided by the homenet, regardless of which provisioning domain it is intended to serve, will accept
-	    updates for subdomains of the 'home.arpa' and locally-served 'ip6.arpa' and 'in-addr.arpa' domains from hosts on the local
-	    link.</t>
+	<t>Configuration from the IPv4 DHCP server are treated as being part of the homenet provisioning domain.  The case where a
+	  homenet advertises IPv4 addresses from one or more public prefixes is out of scope for this document.  Such a
+	  configuration is NOT RECOMMENDED for homenets.</t>
+
+	<t>Configuration for IPv6 provisioning domains is done using the Multiple Provisioning Domain RA option [CITE].</t>
       </section>
 
       <section title="Using the Local Namespace While Away From Home">
@@ -241,10 +305,10 @@
       <t>Privacy is somewhat protected in the sense that names published on the homenet are only visible to devices connected
 	to the homenet.   This may be insufficient privacy in some cases.</t>
       
-      <t>The privacy of host information on the local net is left to hosts.  Various mechanisms are available to hosts to ensure
-	that tracking does not occur if it is not desired.  However, devices that need to have special permission to manage the
-	homenet will inevitably reveal something about themselves when doing so.  It may be possible to use something like HTTP
-	token binding <xref target="I-D.ietf-tokbind-https"/> to mitigate this risk.</t>
+      <t>The privacy of host information on the homenet is left to hosts.  Various mechanisms are available to hosts to ensure that
+	tracking does not occur if it is not desired.  However, devices that need to have special permission to manage the homenet
+	will inevitably reveal something about themselves when doing so.  It may be possible to use something like HTTP token
+	binding <xref target="I-D.ietf-tokbind-https"/> to mitigate this risk.</t>
     </section>
 
     <section title="Security Considerations">
